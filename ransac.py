@@ -21,17 +21,18 @@ def random_points(x, y):
 
 
 class RANSAC:
-    def __init__(self, x, y, threshold, iterations):
+    def __init__(self, x, y, threshold, minimum_inliers):
         self.x = x
         self.y = y
         self.threshold = threshold
-        self.iterations = iterations
+        #self.iterations = iterations
         self.best_center_x = 0
         self.best_center_y = 0
         self.best_radius = 0
         self.best_inliers = 0
         self.inliers = None
         self.outliers = None
+        self.minimum_inliers = minimum_inliers
     
     def fit_circle(self, x, y):
         x1, x2, x3 = x
@@ -73,7 +74,11 @@ class RANSAC:
         return np.array(inliers), np.array(outliers)
 
     def fit(self):
-        for i in range(self.iterations):
+        #for i in range(self.iterations):
+        iterations = 0
+        while self.best_inliers < self.minimum_inliers:
+        #for i in range(20):
+            iterations += 1
             x_rand, y_rand = random_points(self.x, self.y)
             center_x, center_y, radius = self.fit_circle(x_rand, y_rand)
             inliers, outliers = self.find_inliers(center_x, center_y, radius)
@@ -84,11 +89,33 @@ class RANSAC:
                 self.best_radius = radius
                 self.inliers = inliers
                 self.outliers = outliers
-
-        return self.best_center_x, self.best_center_y, self.best_radius
+        return self.best_center_x, self.best_center_y, self.best_radius, iterations
 
 if __name__ == "__main__":
     x, y = read_points('RANSACdata09.txt')
-    ransac = RANSAC(x, y, 0.7, 20)
-    center_x, center_y, radius = ransac.fit()
+    d = 360 #Minimum required inliers
+    t = 0.7 #Threshold
+    ransac = RANSAC(x, y, t, d)
+    center_x, center_y, radius, iterations = ransac.fit()
     ransac.plot_circle(center_x, center_y, radius)
+    center_x_arr = np.array([])
+    center_y_arr = np.array([])
+    radius_arr = np.array([])
+    iterations_arr = np.array([])
+    for i in range(15):
+        ransac = RANSAC(x, y, t, d)
+        center_x, center_y, radius, iterations = ransac.fit()
+        center_x_arr = np.append(center_x_arr, center_x)
+        center_y_arr = np.append(center_y_arr, center_y)
+        radius_arr = np.append(radius_arr, radius)
+        iterations_arr = np.append(iterations_arr, iterations)
+    print(f'Number of iterations for each run: {iterations_arr}')
+    print(f'Mean number of iterations: {np.mean(iterations_arr):.2f}')
+    print('Mean Circle Parameters:')
+    print(f'Center X: {np.mean(center_x_arr):.2f}')
+    print(f'Center Y: {np.mean(center_y_arr):.2f}')
+    print(f'Radius: {np.mean(radius_arr):.2f}')
+    
+
+
+
